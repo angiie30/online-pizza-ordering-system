@@ -114,10 +114,4 @@ public class CartItem {
     public double getLineTotal() {
         return (unitPrice + getExtrasPerUnit()) * quantity;
     }
-
-    /** @deprecated Use {@link #getLineTotal()} instead. */
-    @Deprecated
-    public double getTotalWithCustomizations() {
-        return getLineTotal();
-    }
 }

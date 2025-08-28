@@ -17,6 +17,8 @@ public class Order {
     private int customerId;
     private OrderStatus lastStatus;
     private String transactionId;
+    private double taxes;
+    private double total;
     private int rating;
     private String review;
     private LocalDateTime reviewAt;
@@ -36,10 +38,19 @@ public class Order {
         addTrackingStatus(OrderStatus.CREATED);
     }
 
-    public Order(int customerId, OrderType orderType) {
+    public Order(int customerId, OrderType orderType, ShoppingCart cart) {
+        this.orderId = (int)(System.nanoTime() & 0xfffffff);
         this.customerId = customerId;
         this.orderType = orderType;
         this.createdAt = LocalDateTime.now();
+        if (cart != null) {
+            for (CartItem item : cart.getItems()) {
+                OrderDetail detail = new OrderDetail(this.orderId, item.getMenuItem(), item.getQuantity(),
+                        item.getUnitPrice(), item.getCustomizations());
+                this.orderDetails.add(detail);
+            }
+        }
+        lastStatus = OrderStatus.CREATED;
         addTrackingStatus(OrderStatus.CREATED);
     }
 
@@ -57,7 +68,27 @@ public class Order {
     public void setLastStatus(OrderStatus lastStatus) { this.lastStatus = lastStatus; }
 
     public String getTransactionId() { return transactionId; }
-    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
+
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
+    }
+    
+     public double getTaxes() {
+        return taxes;
+    }
+
+    public void setTaxes(double taxes) {
+        this.taxes = taxes;
+    }
+
+    public double getTotal() {
+        return total;
+    }
+
+    public void setTotal(double total) {
+        this.total = total;
+    }
+
 
     /** For compatibility with OrderService.checkout(...) */
     public void setTransactionIdHash(String transactionId) { this.transactionId = transactionId; }
@@ -111,19 +142,13 @@ public class Order {
         this.lastStatus = status;
     }
 
-    // ===== operations per UML =====
-    /**
-     * Compute the grand total of the order by summing each OrderDetail total.
-     * Ignores the orderId parameter; kept for UML compatibility.
-     */
-    public double getTotal() {
-        if (orderDetails == null || orderDetails.isEmpty()) return 0.0;
-        return orderDetails.stream()
-                .filter(d -> d != null)
-                .mapToDouble(OrderDetail::getTotal)
-                .sum();
+    public void updateTotal() {
+        this.total = orderDetails.stream().mapToDouble(OrderDetail::getLineTotal).sum();
     }
-    public double getTotal(int orderId) {
-        return getTotal();
+
+    public void updateTaxes() {
+        this.taxes = this.total * 0.07; // Ejemplo 7% de impuesto
     }
+
+    public double getGrandTotal() { return total + taxes; }
 }
