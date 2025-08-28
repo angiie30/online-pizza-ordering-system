@@ -17,8 +17,9 @@ import pupr.pizza.order.Transaction;
 import pupr.pizza.security.Action;
 import pupr.pizza.security.AuthorizationService;
 
+//comments cambiar a ingles
 /**
- * Implementación mínima en memoria que respeta el UML:
+ * Minimal in-memory implementation that respects the UML:
  *  + createOrder(customer, cart): Order
  *  + assignEmployee(orderId, employeeId)
  *  + updateOrderStatus(orderId, status)
@@ -29,27 +30,21 @@ public class OrderService {
 
     private final AuthorizationService authz;
 
-    // Almacenamiento en memoria para la demo (puedes reemplazar por repositorios)
+    // In-memory storage for demo purposes (you can replace with repositories)
     private final Map<Integer, Order> orders = new HashMap<>();
     private final Map<Integer, Employee> employees = new HashMap<>();
     private final Map<String, Transaction> transactions = new HashMap<>();
+
+    public OrderService() {
+        this.authz = new AuthorizationService();
+    }
 
     public OrderService(AuthorizationService authz) {
         this.authz = Objects.requireNonNull(authz, "authz");
     }
 
-    public Order createOrder(Customer customer, ShoppingCart cart, Employee actingUser) {
-        require(authz.can(actingUser, Action.CREATE_ORDER), "Not allowed to create order");
-
-        Order o = new Order();
-        o.setOrderId(generateOrderId());
-        o.setCustomerId(customer.getId().intValue());
-        o.setOrderType(OrderType.DELIVERY);    // o según tu flujo
-        o.setLastStatus(OrderStatus.CREATED);
-        o.setCreatedAt(LocalDateTime.now());
-
-        // registra primer tracking en el historial del Order
-        o.getTrackingHistory().add(new OrderTracking(o.getOrderId(), OrderStatus.CREATED));
+    public Order createOrder(Customer customer, ShoppingCart cart) {
+        Order o = new Order(customer.getId().intValue(), OrderType.DELIVERY, cart);
 
         orders.put(o.getOrderId(), o);
         return o;
@@ -73,9 +68,7 @@ public class OrderService {
         o.getTrackingHistory().add(new OrderTracking(orderId, status));
     }
 
-    public Transaction checkout(int orderId, String paymentMethodId, CreditCard creditCard, Employee actingUser) {
-        require(authz.can(actingUser, Action.CHECKOUT), "Not allowed to checkout");
-
+    public Transaction checkout(int orderId, String paymentMethodId, CreditCard creditCard) {
         Order o = getOrderOrThrow(orderId);
 
         Transaction tx = new Transaction();
@@ -83,9 +76,9 @@ public class OrderService {
         tx.setPaymentMethodId(paymentMethodId);
         tx.setPaymentIntent("sale");
         tx.setPaymentStatus("succeeded");
-        tx.setAmount(o.getTotal());          // ahora usa getTotal() del Order
+        tx.setAmount(o.getGrandTotal());
         tx.setCurrency("USD");
-        tx.setCreditCard(creditCard);        // guardar tarjeta en la tx
+        tx.setCreditCard(creditCard);
         tx.setCreatedAt(LocalDateTime.now());
 
         transactions.put(tx.getTransactionId(), tx);
@@ -126,11 +119,7 @@ public class OrderService {
         if (!cond) throw new SecurityException(msg);
     }
 
-    private static int generateOrderId() {
-        return (int)(System.nanoTime() & 0xfffffff);
-    }
-
-    // Helpers para poblar empleados en la demo
+    // Helpers to populate employees in the demo
     public void registerEmployee(Employee e) {
         employees.put(e.getId().intValue(), e);
     }
